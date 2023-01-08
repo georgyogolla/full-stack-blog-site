@@ -7,7 +7,8 @@ import AboutPage from "./pages/AboutPage";
 import ArticlesListPage from "./pages/ArticlesListPage";
 import ArticlePage from "./pages/ArticlePage";
 import NotFoundPage from "./pages/NotFoundPage";
-// import articles from "./pages/articles-content";
+import CreateAccountPage from "./pages/CreateAccountPage";
+import LoginPage from "./pages/LoginPage";
 import "./App.css";
 
 function App() {
@@ -23,6 +24,8 @@ function App() {
             <Route path="/articles" element={<ArticlesListPage />} />
             <Route path="/articles:articleId" element={<ArticlePage />} />
             <Route path="*" element={<NotFoundPage />} />
+            <Route path="/create-account" element={<CreateAccountPage />} />
+            <Route path="/login" element={<LoginPage />} />
           </Routes>
         </div>
       </div>

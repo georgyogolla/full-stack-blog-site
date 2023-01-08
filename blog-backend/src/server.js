@@ -1,3 +1,5 @@
+import fs from 'fs';
+import admin from 'firebase-admin';
 import express from 'express';
 import {
   db,
@@ -6,57 +8,43 @@ import {
 
 
 
+const credentials = JSON.parse(
+  fs.readFileSync('./credentials.json')
+);
+
+admin.initializeApp({
+  credential: admin.credential.cert(credentials),
+});
 
 const app = express();
-app.use(express.json()); //middleware that allows the body property to work well in an expess application
+app.use(express.json());
 
-// app.post('/hello', (req, res) => {
-//   console.log(req.body);
-//   res.send(`Hello! ${req.body.email}`)
-// });
+app.use(async (req, res, next) => {
+  const {
+    authtoken
+  } = req.headers;
 
-// //URL Parameters in Express
-// app.get('/hello/:email', (req, res) => {
-//   const {
-//     email
-//   } = req.params;
-//   // const name = req.params.name;
-//   res.send(`Hello ${email}`);
-// })
+  if (authtoken) {
+    try {
+      const user = await admin.auth().verifyIdToken(authtoken);
+      req.user = user;
 
-
-//TEMPORARY IN-MEMEORY DATABASE
-// let articlesInfo = [{
-//     name: 'andrew-clark',
-//     upvotes: 0,
-//     comments: [],
-//   },
-//   {
-//     name: 'dan-abramov',
-//     upvotes: 0,
-//     comments: [],
-//   },
-//   {
-//     name: 'jason-bonta',
-//     upvotes: 0,
-//     comments: [],
-//   },
-//   {
-//     name: 'joe-savona',
-//     upvotes: 0,
-//     comments: [],
-//   },
-//   {
-//     name: 'josh-story',
-//     upvotes: 0,
-//     comments: []
-//   }
-// ]
+    } catch (error) {
+      return res.sendStatus(400);
+    }
+  }
+  req.user = req.user || {};
+  next();
+});
 
 //Connecting to the database
 app.get('/api/articles/:name', async (req, res) => {
   const {
     name
+  } = req.params;
+
+  const {
+    uid
   } = req.params;
 
   // Query data in database
@@ -66,36 +54,62 @@ app.get('/api/articles/:name', async (req, res) => {
 
   //send the JSON data back to the client
   if (article) {
+    const upvoteIds = article.upvoteId || [];
+    article.canUpvote = uid && !upvoteIds.includes(uid);
     res.json(article);
   } else {
     res.sendStatus(404);
   }
 
+});
+
+
+// Preventing user from upvoting and commenting when he / she is not logged in
+app.use((req, res, next) => {
+  if (req.user) {
+    next();
+  } else {
+    res.sendStatus(401);
+  }
 })
 //CREATING AN UPVOTE ENDPOINT 
 app.put('/api/articles/:name/upvote', async (req, res) => {
   const {
     name
   } = req.params;
+  const {
+    uid
+  } = req.user;
 
-  await db.collection('articles').updateOne({
-    name
-  }, {
-    $inc: {
-      upvotes: 1
-    }, //increment upvotes by one
-  });
-  //Query data in database
   const article = await db.collection('articles').findOne({
     name
   });
 
   if (article) {
-    res.json(article);
+    const upvoteIds = article.upvoteIds || [];
+    const canUpvote = uid && !upvoteIds.includes(uid);
+
+    if (canUpvote) {
+      await db.collection('articles').updateOne({
+        name
+      }, {
+        $inc: {
+          upvotes: 1
+        },
+        $push: {
+          upvoteIds: uid
+        },
+      });
+    }
+    //Query data in database
+    const updatedArticle = await db.collection('articles').findOne({
+      name
+    });
+
+    res.json(updatedArticle);
   } else {
     res.send('That article doesn\'t exist');
   }
-
 });
 
 //Creating comments endpoint 
@@ -103,17 +117,20 @@ app.post('/api/articles/:name/comments', async (req, res) => {
   const {
     name
   } = req.params;
+
   const {
-    postedBy,
     text
   } = req.body;
+  const {
+    email
+  } = req.user;
 
   await db.collection('articles').updateOne({
     name
   }, {
     $push: {
       comments: {
-        postedBy,
+        postedBy: email,
         text
       }
     }
