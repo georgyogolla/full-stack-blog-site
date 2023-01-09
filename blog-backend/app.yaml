@@ -1,0 +1,6 @@
+# This file tells google cloud what sort of environment your project need to run in
+
+includes:
+ -prod-env.yaml
+runtime: nodejs14
+ 

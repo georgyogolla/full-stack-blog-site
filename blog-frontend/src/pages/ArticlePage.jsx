@@ -29,7 +29,7 @@ const ArticlePage = () => {
       setArticleInfo(newArticleInfo);
     };
 
-    if (isLoading) {
+    if (!isLoading) {
       loadArticle();
     }
   }, [isLoading, user]);

@@ -1,10 +1,19 @@
 import fs from 'fs';
+import path from 'path';
 import admin from 'firebase-admin';
 import express from 'express';
+import 'dotenv/config';
 import {
   db,
   connectToDb
 } from './db.js';
+
+import {
+  fileURLToPath
+} from 'url';
+const __filename = fileURLToPath(
+  import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 
@@ -18,6 +27,12 @@ admin.initializeApp({
 
 const app = express();
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../dist')));
+
+
+app.get(/^(?!\/api).+/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../build/index.html'));
+})
 
 app.use(async (req, res, next) => {
   const {
@@ -149,9 +164,10 @@ app.post('/api/articles/:name/comments', async (req, res) => {
 });
 
 
+const PORT = process.env.PORT || 8000;
 connectToDb(() => {
   console.log('Successfully connected to the database');
-  app.listen(8000, () => {
-    console.log('Server is listening on port 8000');
+  app.listen(`${PORT}`, () => {
+    console.log(`Server is listening on port ${PORT}`);
   });
 })

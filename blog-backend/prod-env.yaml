@@ -1,0 +1,4 @@
+# Add environment variables here
+env_variables: 
+  MONGO_USERNAME:kabambe
+  MONGO_PASSWORD:dRZgZCc2aeLBAroN
